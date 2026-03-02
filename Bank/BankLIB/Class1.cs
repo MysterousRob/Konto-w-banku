@@ -4,9 +4,9 @@ namespace Bank
 {
     public class Account
     {
-        protected string client;
-        protected decimal balance;
-        protected bool isBlocked = false;
+        private string client;
+        private decimal balance;
+        private bool isBlocked = false;
 
         public Account(string client, decimal initialBalance = 0)
         {
@@ -24,6 +24,16 @@ namespace Bank
         public virtual decimal Balance => balance;
         public bool IsBlocked => isBlocked;
 
+        protected void IncreaseBalance(decimal amount)
+        {
+            balance += amount;
+        }
+
+        protected void DecreaseBalance(decimal amount)
+        {
+            balance -= amount;
+        }
+
         public virtual void Deposit(decimal amount)
         {
             if (isBlocked)
@@ -32,7 +42,7 @@ namespace Bank
             if (amount <= 0)
                 throw new ArgumentException("Deposit amount must be greater than zero.");
 
-            balance += amount;
+            IncreaseBalance(amount);
         }
 
         public virtual void Withdraw(decimal amount)
@@ -46,7 +56,7 @@ namespace Bank
             if (amount > balance)
                 throw new InvalidOperationException("Insufficient funds in the account.");
 
-            balance -= amount;
+            DecreaseBalance(amount);
         }
 
         public void BlockAccount()
@@ -65,7 +75,8 @@ namespace Bank
         private decimal overdraftLimit;
         private bool overdraftUsed = false;
 
-        public KontoPlus(string client, decimal initialBalance, decimal overdraftLimit) : base(client, initialBalance)
+        public KontoPlus(string client, decimal initialBalance, decimal overdraftLimit)
+            : base(client, initialBalance)
         {
             if (overdraftLimit < 0)
                 throw new ArgumentException("Overdraft limit cannot be negative.");
@@ -80,15 +91,17 @@ namespace Bank
             {
                 if (value < 0)
                     throw new ArgumentException("Overdraft limit cannot be negative.");
+
                 overdraftLimit = value;
             }
         }
 
-        public override decimal Balance => balance + (overdraftUsed ? 0 : overdraftLimit);
+        public override decimal Balance =>
+            base.Balance + (overdraftUsed ? 0 : overdraftLimit);
 
         public override void Withdraw(decimal amount)
         {
-            if (isBlocked)
+            if (IsBlocked)
                 throw new InvalidOperationException("Operation not allowed. The account is blocked.");
 
             if (amount <= 0)
@@ -97,9 +110,9 @@ namespace Bank
             if (amount > Balance)
                 throw new InvalidOperationException("Amount exceeds available balance and overdraft limit.");
 
-            balance -= amount;
+            DecreaseBalance(amount);
 
-            if (balance < 0)
+            if (base.Balance < 0)
             {
                 overdraftUsed = true;
                 BlockAccount();
@@ -111,9 +124,9 @@ namespace Bank
             if (amount <= 0)
                 throw new ArgumentException("Deposit amount must be greater than zero.");
 
-            balance += amount;
+            IncreaseBalance(amount);
 
-            if (balance >= 0 && isBlocked)
+            if (base.Balance >= 0 && IsBlocked)
             {
                 overdraftUsed = false;
                 UnblockAccount();
@@ -132,7 +145,7 @@ namespace Bank
             if (limit < 0)
                 throw new ArgumentException("Limit cannot be negative.");
 
-            this.konto = new Account(client, initialBalance);
+            konto = new Account(client, initialBalance);
             this.limit = limit;
         }
 
@@ -143,18 +156,27 @@ namespace Bank
             {
                 if (value < 0)
                     throw new ArgumentException("Limit cannot be negative.");
+
                 limit = value;
             }
         }
 
         public string Name => konto.Name;
-        public decimal Balance => konto.Balance + (overdraftUsed ? 0 : limit);
+
+        public decimal Balance =>
+            konto.Balance + (overdraftUsed ? 0 : limit);
+
         public bool IsBlocked => konto.IsBlocked;
 
         public void Deposit(decimal amount)
         {
+            if (amount <= 0)
+                throw new ArgumentException("Deposit amount must be greater than zero.");
+
+            konto.UnblockAccount(); 
             konto.Deposit(amount);
-            if (konto.Balance >= 0 && konto.IsBlocked)
+
+            if (konto.Balance >= 0)
             {
                 overdraftUsed = false;
                 konto.UnblockAccount();
@@ -163,16 +185,19 @@ namespace Bank
 
         public void Withdraw(decimal amount)
         {
-            if (konto.IsBlocked)
-                throw new InvalidOperationException("Operation is not allowed. The account is blocked.");
+            if (IsBlocked)
+                throw new InvalidOperationException("Operation not allowed. The account is blocked.");
 
             if (amount <= 0)
-                throw new ArgumentException("Withdrawl amount must be greater that zero.");
+                throw new ArgumentException("Withdrawal amount must be greater than zero.");
 
             if (amount > Balance)
                 throw new InvalidOperationException("Amount exceeds available balance and limit.");
 
-            konto.Withdraw(amount);
+            konto.UnblockAccount();
+            typeof(Account)
+                .GetMethod("DecreaseBalance", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                ?.Invoke(konto, new object[] { amount });
 
             if (konto.Balance < 0)
             {
@@ -181,15 +206,7 @@ namespace Bank
             }
         }
 
-        public void BlockAccount()
-        {
-            konto.BlockAccount();
-        }
-
-        public void UnblockAccount()
-        {
-            konto.UnblockAccount();
-        }
+        public void BlockAccount() => konto.BlockAccount();
+        public void UnblockAccount() => konto.UnblockAccount();
     }
 }
-      
