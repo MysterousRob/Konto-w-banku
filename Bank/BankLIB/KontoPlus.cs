@@ -28,7 +28,6 @@ namespace Bank
             }
         }
 
-        // Available funds (includes overdraft if not used yet)
         public override decimal Balance =>
             base.Balance + (overdraftUsed ? 0 : overdraftLimit);
 
@@ -45,7 +44,6 @@ namespace Bank
 
             DecreaseBalance(amount);
 
-            // If real balance becomes negative → overdraft used → block account
             if (base.Balance < 0)
             {
                 overdraftUsed = true;
@@ -60,7 +58,6 @@ namespace Bank
 
             IncreaseBalance(amount);
 
-            // If account was blocked due to overdraft and balance >= 0 → unlock
             if (base.Balance >= 0 && IsBlocked)
             {
                 overdraftUsed = false;
@@ -68,7 +65,6 @@ namespace Bank
             }
         }
 
-        // Optional Step 5 improvement (conversion back)
         public Account ToStandardAccount()
         {
             return new Account(this.Name, base.Balance);

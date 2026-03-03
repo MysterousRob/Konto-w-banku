@@ -71,7 +71,6 @@ namespace Bank
             isBlocked = false;
         }
 
-        // Optional Step 5 improvement (conversion)
         public KontoPlus ToKontoPlus(decimal limit)
         {
             return new KontoPlus(this.Name, this.Balance, limit);

@@ -19,7 +19,6 @@ namespace Bank
 
         public string Name => konto.Name;
 
-        // Available funds (same logic as KontoPlus)
         public decimal Balance =>
             konto.Balance + (overdraftUsed ? 0 : limit);
 
@@ -42,11 +41,9 @@ namespace Bank
             if (amount <= 0)
                 throw new ArgumentException("Deposit amount must be greater than zero.");
 
-            // allow deposit even if blocked
             konto.UnblockAccount();
             konto.Deposit(amount);
 
-            // if balance restored above 0 → reset overdraft
             if (konto.Balance >= 0)
             {
                 overdraftUsed = false;
@@ -65,7 +62,6 @@ namespace Bank
             if (amount > Balance)
                 throw new InvalidOperationException("Amount exceeds available balance and limit.");
 
-            // Manual balance handling (since Account.Withdraw prevents overdraft)
             konto.UnblockAccount();
             typeof(Account)
                 .GetMethod("DecreaseBalance", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
